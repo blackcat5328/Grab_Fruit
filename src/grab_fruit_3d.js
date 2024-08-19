@@ -48,7 +48,7 @@ window.initGame = (React, assetsUrl) => {
         React.createElement(ModelLoader, {
           url: `${assetsUrl}/hand.glb`,
           scale: [0.5, 0.5, 0.5],
-          position: [0, 0, -2],
+          position: [0, 0, 0],
         }),
         heldApple && React.createElement(ModelLoader, {
           url: `${assetsUrl}/apple.glb`,
@@ -82,6 +82,7 @@ window.initGame = (React, assetsUrl) => {
     function AppleGame() {
       const [apples, setApples] = useState([]);
       const [heldApple, setHeldApple] = useState(null);
+      const [pickedApples, setPickedApples] = useState(Array(10).fill(false));
   
       useEffect(() => {
         const generateApples = () => {
@@ -100,6 +101,11 @@ window.initGame = (React, assetsUrl) => {
       const handleClick = (index) => {
         if (heldApple === null) {
           setHeldApple(index);
+          setPickedApples((prev) => {
+            const newPicked = [...prev];
+            newPicked[index] = true; // Mark the apple as picked
+            return newPicked;
+          });
         } else {
           setHeldApple(null);
         }
@@ -119,7 +125,7 @@ window.initGame = (React, assetsUrl) => {
         React.createElement('ambientLight', { intensity: 0.5 }),
         React.createElement('pointLight', { position: [10, 10, 10] }),
         apples.map((apple, index) =>
-          React.createElement(Apple, {
+          !pickedApples[index] && React.createElement(Apple, {
             key: index,
             position: apple.position,
             onPickUp: () => handleClick(index),
