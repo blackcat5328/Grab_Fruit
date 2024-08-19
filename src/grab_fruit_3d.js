@@ -17,6 +17,33 @@ window.initGame = (React, assetsUrl) => {
         return React.createElement('primitive', { object: copiedScene });
     });
 
+    const Wall = ({ position }) => {
+        return React.createElement(ModelLoader, {
+            url: `${assetsUrl}/wall.glb`,
+            scale: [1, 20, 20],
+            position: [0, 5, -10],
+            rotation: [0, Math.PI / 2, 0],
+        });
+    };
+
+    const Ground = () => {
+        return React.createElement(ModelLoader, {
+            url: `${assetsUrl}/ground.glb`,
+            scale: [1, 17, 17],
+            position: [0, -4.5, 0],
+            rotation: [0, 0, -Math.PI / 2],
+        });
+    };
+
+    const Table = ({ position }) => {
+        return React.createElement(ModelLoader, {
+            url: `${assetsUrl}/table.glb`,
+            scale: [10, 4, 10],
+            position: [0, -4, 0],
+            rotation: [0, 0, 0],
+        });
+    };
+
     function Fruit({ type, position, onPickUp }) {
         const fruitUrl = type === 'apple' ? `${assetsUrl}/apple.glb` : `${assetsUrl}/banana.glb`;
         return React.createElement(
@@ -44,19 +71,21 @@ window.initGame = (React, assetsUrl) => {
             }
         });
 
+        const handModelUrl = heldFruit ? `${assetsUrl}/hand2.glb` : `${assetsUrl}/hand.glb`;
+
         return React.createElement(
             'group',
             { ref: handRef },
             React.createElement(ModelLoader, {
-                url: `${assetsUrl}/hand.glb`,
-                scale: [0.5, 0.5, 0.5],
+                url: handModelUrl,
+                scale: [1, 1, 1],
                 position: [0, 0, 0],
                 rotation: [0, Math.PI / 2, 0],
             }),
             heldFruit && React.createElement(ModelLoader, {
                 url: heldFruit.type === 'apple' ? `${assetsUrl}/apple.glb` : `${assetsUrl}/banana.glb`,
                 scale: [0.5, 0.5, 0.5],
-                position: [0, -0.5, 0],
+                position: [0, 0.2, -0.4],
             })
         );
     }
@@ -78,7 +107,7 @@ window.initGame = (React, assetsUrl) => {
                 return React.createElement(ModelLoader, {
                     key: index,
                     url: fruitUrl,
-                    scale: [0.2, 0.2, 0.2],
+                    scale: [0.4, 0.4, 0.4],
                     position: [
                         column * 0.5 - 0.75,
                         0.7 + row * 0.3,
@@ -105,7 +134,7 @@ window.initGame = (React, assetsUrl) => {
             position: [-2, 2, -0.9],
         });
     }
-    
+
     function Notice2Board() {
         return React.createElement(ModelLoader, {
             url: `${assetsUrl}/notice_board.glb`,
@@ -125,11 +154,18 @@ window.initGame = (React, assetsUrl) => {
 
     function Camera() {
         const { camera } = useThree();
+        
         useEffect(() => {
-            camera.position.set(0, 2.5, 5.5);
+            camera.position.set(0, 3, 10);
             camera.lookAt(0, 0, 0);
         }, [camera]);
-
+    
+        useFrame(() => {
+            camera.position.x = THREE.MathUtils.clamp(camera.position.x, -3, 3);
+            camera.position.y = THREE.MathUtils.clamp(camera.position.y, 1, 7);
+            camera.position.z = THREE.MathUtils.clamp(camera.position.z, 5, 15);
+        });
+    
         return null;
     }
 
@@ -143,9 +179,9 @@ window.initGame = (React, assetsUrl) => {
             const generateFruits = () => {
                 const newFruits = Array.from({ length: 10 }, () => {
                     const type = Math.random() < 0.5 ? 'apple' : 'banana';
-                    const xPosition = (Math.random() - 0.5) * 10; // X range
-                    const zPosition = (Math.random() * 3) + 1; // Z range to keep fruits in front of the baskets
-                    const yPosition = 0; // Keep yPosition low
+                    const xPosition = (Math.random() - 0.5) * 10;
+                    const zPosition = (Math.random() * 3) + 1;
+                    const yPosition = -0.5;
 
                     return {
                         type,
@@ -170,9 +206,24 @@ window.initGame = (React, assetsUrl) => {
             }
         };
 
-        const dropFruit = () => {
+        const dropFruit = (basketType) => {
             if (heldFruit !== null) {
-                setCollectedFruits((prev) => [...prev, heldFruit]);
+                if (heldFruit.type === basketType) {
+                    setCollectedFruits((prev) => [...prev, heldFruit]);
+                } else {
+                    const newFruits = Array.from({ length: 2 }, () => {
+                        const type = Math.random() < 0.5 ? 'apple' : 'banana';
+                        const xPosition = (Math.random() - 0.5) * 10;
+                        const zPosition = (Math.random() * 3) + 1;
+                        const yPosition = -0.5;
+
+                        return {
+                            type,
+                            position: [xPosition, yPosition, zPosition],
+                        };
+                    });
+                    setFruits((prev) => [...prev, ...newFruits]);
+                }
                 setHeldFruit(null);
             }
         };
@@ -193,15 +244,15 @@ window.initGame = (React, assetsUrl) => {
             ),
             React.createElement(Basket, {
                 position: [-2, 0, 0],
-                onDrop: dropFruit,
+                onDrop: () => dropFruit('apple'),
                 collectedFruits: collectedFruits,
-                type: 'apple',  // This basket collects apples
+                type: 'apple',
             }),
             React.createElement(Basket, {
                 position: [2, 0, 0],
-                onDrop: dropFruit,
+                onDrop: () => dropFruit('banana'),
                 collectedFruits: collectedFruits,
-                type: 'banana', // This basket collects bananas
+                type: 'banana',
             }),
             React.createElement(Hand, {
                 heldFruit: heldFruit,
@@ -209,7 +260,10 @@ window.initGame = (React, assetsUrl) => {
             React.createElement(Notice1Board),
             React.createElement(APPLE),
             React.createElement(Notice2Board),
-            React.createElement(BANANA)
+            React.createElement(BANANA),
+            React.createElement(Wall, { position: [0, 0, -5] }),
+            React.createElement(Ground),
+            React.createElement(Table, { position: [0, 0, -2] })
         );
     }
 
